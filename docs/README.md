@@ -23,8 +23,14 @@ in this simplified model.
 
 `MemChannel`
 
-A memory channel. It has:
+A runtime memory channel. It records the actual channel type, mappings, and
+access permissions.
 
+`MemChannelSpec`
+
+One policy's local description of a memory channel. It has:
+
+- `channel`: the underlying runtime `MemChannel`;
 - `memType`: `Protected` or `Unprotected`;
 - `mapped`: peers with a mapping;
 - `canRead`, `canWrite`, `canExec`: access permissions.
@@ -34,14 +40,14 @@ A memory channel. It has:
 One policy in the combined policy set. It records:
 
 - `peers`: peers named by the policy;
-- `memChannels`: memory channels described by the policy;
+- `memChannels`: policy-local memory-channel specifications;
 - `transitions`: transition channels described by the policy.
 
 ## Current Validation Rules
 
 `PolicyShape`
 
-Memory channels in a policy can only map peers named by that policy.
+Memory-channel specifications can only map peers named by their policy.
 
 `MemoryAccessRequiresMapping`
 

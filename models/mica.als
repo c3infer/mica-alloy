@@ -31,6 +31,17 @@ sig TransitionChannel {
 }
 
 sig MemChannel {
+  -- Runtime properties of the underlying shared resource.
+  memType: one MemType,
+  mapped: set Peer,
+  canRead: set Peer,
+  canWrite: set Peer,
+  canExec: set Peer
+}
+
+-- One policy's local description of an underlying memory channel.
+sig MemChannelSpec {
+  channel: one MemChannel,
   memType: one MemType,
   mapped: set Peer,
   canRead: set Peer,
@@ -42,8 +53,8 @@ sig Policy {
   -- Peers named by this policy.
   peers: set Peer,
 
-  -- Memory channels described by this policy.
-  memChannels: set MemChannel,
+  -- Policy-local descriptions of memory channels.
+  memChannels: set MemChannelSpec,
 
   -- Control-flow transition channels described by this policy.
   transitions: set TransitionChannel
@@ -54,7 +65,8 @@ pred active[ch: MemChannel] {
 }
 
 pred permits[p: Policy, ch: MemChannel, peer: Peer] {
-  ch in p.memChannels and peer in ch.mapped
+  some spec: p.memChannels |
+    spec.channel = ch and peer in spec.mapped
 }
 
 fun memoryFlow: Peer -> (Peer + Host) {
@@ -79,7 +91,7 @@ fun peerFlow: Peer -> Peer {
 
 fact PolicyShape {
   all p: Policy {
-    -- Memory channels can only map peers named by the policy.
+    -- Memory channel specifications can only map peers named by the policy.
     -- I will probably revisit that with any
     p.memChannels.mapped in p.peers
   }
@@ -166,7 +178,7 @@ pred unauthorizedActiveMemoryRejected {
 
     some policy: Policy |
       a in policy.peers and
-      ch not in policy.memChannels
+      no spec: policy.memChannels | spec.channel = ch
   }
 }
 
