@@ -9,6 +9,27 @@ one sig Host {}
 abstract sig MemType {}
 one sig Protected, Unprotected extends MemType {}
 
+-- A transition channel governs a class of control-flow transitions from a
+-- peer to the untrusted host.
+abstract sig TransitionType {}
+one sig Call, Exception extends TransitionType {}
+
+-- Platform-specific identifiers for individual calls or exceptions.
+sig TransitionID {}
+
+-- The action Mica applies when a covered transition occurs.
+abstract sig TransitionAction {}
+one sig Allow, Scrub, Block extends TransitionAction {}
+
+sig TransitionChannel {
+  owner: one Peer,
+  transitionType: one TransitionType,
+  -- This is probably not necessary. I could remove if it increases
+  -- the model checking time too much
+  range: some TransitionID,
+  action: one TransitionAction
+}
+
 sig MemChannel {
   memType: one MemType,
   mapped: set Peer,
@@ -22,7 +43,10 @@ sig Policy {
   peers: set Peer,
 
   -- Explicit per-channel peer mappings in this policy.
-  listed: MemChannel -> Peer
+  listed: MemChannel -> Peer,
+
+  -- Control-flow transition channels described by this policy.
+  transitions: set TransitionChannel
 }
 
 pred active[ch: MemChannel] {
