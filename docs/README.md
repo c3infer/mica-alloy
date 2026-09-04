@@ -33,7 +33,15 @@ One policy's local description of a memory channel. It has:
 - `channel`: the underlying runtime `MemChannel`;
 - `memType`: `Protected` or `Unprotected`;
 - `mapped`: peers with a mapping;
-- `canRead`, `canWrite`, `canExec`: access permissions.
+- `canRead`, `canWrite`, `canExec`: access permissions;
+- `anyMappings`: wildcard mappings for unnamed peers.
+
+`AnyMapping`
+
+A policy-local `ANY` entry. It records a `count` and its associated memory
+access right. A memory-channel specification may contain multiple
+`ANY` entries with different access rights. The interpretation and validation
+of `count` are not yet modeled.
 
 `Policy`
 

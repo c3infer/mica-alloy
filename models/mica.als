@@ -39,6 +39,15 @@ sig MemChannel {
   canExec: set Peer
 }
 
+abstract sig MemAccessRight {}
+one sig ReadAccess, WriteAccess, ExecAccess extends MemAccessRight {}
+
+-- A policy's ANY entry for a memory channel.
+sig AnyMapping {
+  count: one Int,
+  access: one MemAccessRight
+}
+
 -- One policy's local description of an underlying memory channel.
 sig MemChannelSpec {
   channel: one MemChannel,
@@ -46,7 +55,8 @@ sig MemChannelSpec {
   mapped: set Peer,
   canRead: set Peer,
   canWrite: set Peer,
-  canExec: set Peer
+  canExec: set Peer,
+  anyMappings: set AnyMapping
 }
 
 sig Policy {
@@ -92,7 +102,6 @@ fun peerFlow: Peer -> Peer {
 fact PolicyShape {
   all p: Policy {
     -- Memory channel specifications can only map peers named by the policy.
-    -- I will probably revisit that with any
     p.memChannels.mapped in p.peers
   }
 }
