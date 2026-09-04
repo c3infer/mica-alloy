@@ -34,13 +34,14 @@ A memory channel. It has:
 One policy in the combined policy set. It records:
 
 - `peers`: peers named by the policy;
-- `listed`: explicit per-channel mappings.
+- `memChannels`: memory channels described by the policy;
+- `transitions`: transition channels described by the policy.
 
 ## Current Validation Rules
 
 `PolicyShape`
 
-Explicit channel mappings can only mention listed peers.
+Memory channels in a policy can only map peers named by that policy.
 
 `MemoryAccessRequiresMapping`
 

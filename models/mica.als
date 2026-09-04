@@ -42,8 +42,8 @@ sig Policy {
   -- Peers named by this policy.
   peers: set Peer,
 
-  -- Explicit per-channel peer mappings in this policy.
-  listed: MemChannel -> Peer,
+  -- Memory channels described by this policy.
+  memChannels: set MemChannel,
 
   -- Control-flow transition channels described by this policy.
   transitions: set TransitionChannel
@@ -54,7 +54,7 @@ pred active[ch: MemChannel] {
 }
 
 pred permits[p: Policy, ch: MemChannel, peer: Peer] {
-  peer in p.listed[ch]
+  ch in p.memChannels and peer in ch.mapped
 }
 
 fun memoryFlow: Peer -> (Peer + Host) {
@@ -79,9 +79,9 @@ fun peerFlow: Peer -> Peer {
 
 fact PolicyShape {
   all p: Policy {
-    -- Explicit mappings can only mention named peers.
+    -- Memory channels can only map peers named by the policy.
     -- I will probably revisit that with any
-    all ch: MemChannel | p.listed[ch] in p.peers
+    p.memChannels.mapped in p.peers
   }
 }
 
@@ -166,7 +166,7 @@ pred unauthorizedActiveMemoryRejected {
 
     some policy: Policy |
       a in policy.peers and
-      b not in policy.listed[ch]
+      ch not in policy.memChannels
   }
 }
 
