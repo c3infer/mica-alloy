@@ -241,7 +241,6 @@ assert AtMostOneSpecPerPolicyAndChannel {
     lone { spec: policy.memChannels | spec.channel = ch }
 }
 
-/*
 pred protectedPipelineExample {
   #Peer = 3
   #MemChannel = 2
@@ -259,6 +258,7 @@ pred protectedPipelineExample {
 
     no Gateway
     Host not in a.^memoryFlow
+    c in a.^memoryFlow
   }
 }
 
@@ -279,22 +279,9 @@ pred gatewayMemoryExample {
   }
 }
 
-pred hiddenGatewayMemoryRejected {
-  some p: Peer, ch: MemChannel {
-    ch.memType = Unprotected
-    channelMapped[ch] = p
-
-    p not in Gateway
-  }
-}
-*/
-
 check HostReachabilityRequiresGatewayOnPath for 5
 check ProtectedChannelsDoNotFlowDirectlyToHost for 5
 check AtMostOneSpecPerPolicyAndChannel for 5
 
-/*
 run protectedPipelineExample for 5
 run gatewayMemoryExample for 5
-run hiddenGatewayMemoryRejected for 5
-*/
