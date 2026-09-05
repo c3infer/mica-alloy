@@ -2,8 +2,9 @@
 
 This documents the current simplified model in `models/mica.als`.
 
-For now, the model covers only memory channels. Control-flow transition channels
-are intentionally ignored and should be added later as a separate step.
+For now, validation and information-flow semantics cover memory channels. The
+model includes transition-channel signatures, but facts for those channels are
+still deferred.
 
 ## Current Alloy Vocabulary
 
@@ -105,14 +106,16 @@ A peer is in `Gateway` exactly when it maps unprotected memory.
 
 ## Current Properties
 
-The model checks that reaching the host through memory requires reaching a
-gateway peer.
+The active assertions check that:
 
-It also includes:
+- reaching the host through memory requires a gateway on the peer-flow path;
+- a direct flow to the host is backed by an unprotected channel writable by the
+  source peer;
+- one policy cannot contain multiple specifications for the same memory
+  channel.
 
-- a protected-only pipeline example that should be satisfiable;
-- a gateway-memory example that should be satisfiable;
-- a hidden-gateway scenario that should be unsatisfiable.
+The model also runs satisfiable examples of a protected pipeline and a gateway
+pipeline.
 
 ## Run
 
@@ -124,7 +127,11 @@ Expected results:
 
 ```text
 check HostReachabilityRequiresGatewayOnPath        UNSAT
+check ProtectedChannelsDoNotFlowDirectlyToHost     UNSAT
+check AtMostOneSpecPerPolicyAndChannel              UNSAT
 run   protectedPipelineExample                     SAT
 run   gatewayMemoryExample                         SAT
-run   hiddenGatewayMemoryRejected                  UNSAT
 ```
+
+For `check`, `UNSAT` means Alloy found no counterexample within the configured
+scope. For `run`, `SAT` means Alloy found a matching instance.
