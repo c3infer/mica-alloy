@@ -23,25 +23,28 @@ in this simplified model.
 
 `MemChannel`
 
-A runtime memory channel. It records the actual channel type, mappings, and
-access permissions.
+A memory channel identity. It records only its intrinsic type. Its participants
+and access permissions are derived as the unions of all specifications that
+reference it.
 
 `MemChannelSpec`
 
 One policy's local description of a memory channel. It has:
 
 - `channel`: the underlying runtime `MemChannel`;
-- `memType`: `Protected` or `Unprotected`;
-- `mapped`: peers with a mapping;
 - `canRead`, `canWrite`, `canExec`: access permissions;
 - `anyMappings`: wildcard mappings for unnamed peers.
+
+The peers mapped by a specification are derived as the union of its read,
+write, and execute permission sets. Channel-wide mappings are the corresponding
+union across all specifications that reference the channel.
 
 `AnyMapping`
 
 A policy-local `ANY` entry. It records a `count` and its associated memory
 access right. A memory-channel specification may contain multiple
-`ANY` entries with different access rights. The interpretation and validation
-of `count` are not yet modeled.
+`ANY` entries with different access rights. A positive `count` bounds the
+number of unnamed peers using that access right; `-1` means unlimited.
 
 `Policy`
 
@@ -57,15 +60,27 @@ One policy in the combined policy set. It records:
 
 Memory-channel specifications can only map peers named by their policy.
 
-`MemoryAccessRequiresMapping`
+`MemorySpecificationShape`
 
-A peer can read, write, or execute a memory channel only if it is mapped there.
+Each memory-channel specification belongs to exactly one policy, and each
+`ANY` entry belongs to exactly one specification. A specification has at most
+one `ANY` entry for each access right.
 
-`ExplicitActiveSharing`
+`AnyMappingCountShape`
 
-If a memory channel is active, meaning more than one peer maps it, every
-participant must be permitted by every combined policy that names any
-participant.
+An `ANY` count is either `-1`, meaning unlimited, or a positive integer.
+
+`AnyMappingsCoverUnnamedPeers`
+
+Runtime participants named by the policy must be mapped explicitly. Every
+unnamed runtime participant must have at least one access right, and each of
+its rights must be covered by an `ANY` entry in the specification.
+
+`AnyMappingCounts`
+
+For a bounded `ANY` entry, the number of unnamed runtime participants using
+its access right cannot exceed its positive count. A peer with multiple rights
+is counted once against each corresponding entry.
 
 `GatewayMatchesUnprotectedMemory`
 
@@ -73,16 +88,14 @@ A peer is in `Gateway` exactly when it maps unprotected memory.
 
 ## Current Properties
 
-The model checks:
-
-- active memory sharing is mutually authorized;
-- reaching the host through memory requires reaching a gateway peer.
+The model checks that reaching the host through memory requires reaching a
+gateway peer.
 
 It also includes:
 
 - a protected-only pipeline example that should be satisfiable;
 - a gateway-memory example that should be satisfiable;
-- two rejected loophole scenarios that should be unsatisfiable.
+- a hidden-gateway scenario that should be unsatisfiable.
 
 ## Run
 
@@ -93,10 +106,8 @@ alloy exec -f -t text -o /tmp/mica-alloy-out -c '*' models/mica.als
 Expected results:
 
 ```text
-check ActiveMemorySharingIsMutuallyAuthorized      UNSAT
 check HostReachabilityRequiresGatewayOnPath        UNSAT
 run   protectedPipelineExample                     SAT
 run   gatewayMemoryExample                         SAT
-run   unauthorizedActiveMemoryRejected             UNSAT
 run   hiddenGatewayMemoryRejected                  UNSAT
 ```

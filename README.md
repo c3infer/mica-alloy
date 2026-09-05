@@ -24,5 +24,5 @@ The current vocabulary uses:
 alloy exec -f -t text -o /tmp/mica-alloy-out -c '*' models/mica.als
 ```
 
-Expected result: all `check` commands pass, the two positive examples are
-`SAT`, and the two `*Rejected` runs are `UNSAT`.
+Expected result: the `check` command passes, the two positive examples are
+`SAT`, and the `*Rejected` run is `UNSAT`.

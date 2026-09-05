@@ -31,12 +31,9 @@ sig TransitionChannel {
 }
 
 sig MemChannel {
-  -- Runtime properties of the underlying shared resource.
-  memType: one MemType,
-  mapped: set Peer,
-  canRead: set Peer,
-  canWrite: set Peer,
-  canExec: set Peer
+  -- The memory type is intrinsic to the underlying shared resource.
+  -- Other systems check that all peers map a channel with the same visibility
+  memType: one MemType
 }
 
 abstract sig MemAccessRight {}
@@ -51,8 +48,6 @@ sig AnyMapping {
 -- One policy's local description of an underlying memory channel.
 sig MemChannelSpec {
   channel: one MemChannel,
-  memType: one MemType,
-  mapped: set Peer,
   canRead: set Peer,
   canWrite: set Peer,
   canExec: set Peer,
@@ -70,28 +65,75 @@ sig Policy {
   transitions: set TransitionChannel
 }
 
-pred active[ch: MemChannel] {
-  #ch.mapped > 1
+fun channelSpecs[ch: MemChannel]: set MemChannelSpec {
+  ch.~channel
+}
+
+fun specMapped[spec: MemChannelSpec]: set Peer {
+  spec.canRead + spec.canWrite + spec.canExec
+}
+
+fun channelMapped[ch: MemChannel]: set Peer {
+  let specs = channelSpecs[ch] |
+    specs.canRead + specs.canWrite + specs.canExec
+}
+
+fun channelCanRead[ch: MemChannel]: set Peer {
+  channelSpecs[ch].canRead
+}
+
+fun channelCanWrite[ch: MemChannel]: set Peer {
+  channelSpecs[ch].canWrite
+}
+
+fun channelCanExec[ch: MemChannel]: set Peer {
+  channelSpecs[ch].canExec
+}
+
+fun accessRights[ch: MemChannel, peer: Peer]: set MemAccessRight {
+  { right: MemAccessRight |
+    (right = ReadAccess and peer in channelCanRead[ch]) or
+    (right = WriteAccess and peer in channelCanWrite[ch]) or
+    (right = ExecAccess and peer in channelCanExec[ch])
+  }
+}
+
+-- Finds the unnamed peers using a particular access right on a channel
+fun anyUsers[
+  policy: Policy,
+  spec: MemChannelSpec,
+  right: MemAccessRight
+]: set Peer {
+  { peer: channelMapped[spec.channel] - policy.peers |
+    right in accessRights[spec.channel, peer]
+  }
 }
 
 pred permits[p: Policy, ch: MemChannel, peer: Peer] {
-  some spec: p.memChannels |
-    spec.channel = ch and peer in spec.mapped
+  some spec: p.memChannels {
+    spec.channel = ch
+
+    peer in specMapped[spec] or {
+      peer in channelMapped[ch] - p.peers
+      some accessRights[ch, peer]
+      accessRights[ch, peer] in spec.anyMappings.access
+    }
+  }
 }
 
 fun memoryFlow: Peer -> (Peer + Host) {
   { src, dst: Peer |
     some ch: MemChannel |
-      src in ch.canWrite and
-      dst in ch.canRead and
-      src + dst in ch.mapped
+      src in channelCanWrite[ch] and
+      dst in channelCanRead[ch] and
+      src + dst in channelMapped[ch]
   }
   +
   { src: Peer, h: Host |
     some ch: MemChannel |
       ch.memType = Unprotected and
-      src in ch.canWrite and
-      src in ch.mapped
+      src in channelCanWrite[ch] and
+      src in channelMapped[ch]
   }
 }
 
@@ -102,35 +144,56 @@ fun peerFlow: Peer -> Peer {
 fact PolicyShape {
   all p: Policy {
     -- Memory channel specifications can only map peers named by the policy.
-    p.memChannels.mapped in p.peers
+    all spec: p.memChannels | specMapped[spec] in p.peers
   }
 }
 
-fact MemoryAccessRequiresMapping {
-  all ch: MemChannel |
-    ch.canRead + ch.canWrite + ch.canExec in ch.mapped
+fact MemorySpecificationShape {
+  -- Every MemChannelSpec belongs to exactly one policy
+  all spec: MemChannelSpec |
+    one policy: Policy | spec in policy.memChannels
+
+  -- AnyMapping belongs to exactly one MemChannelSpec
+  all mapping: AnyMapping |
+    one spec: MemChannelSpec | mapping in spec.anyMappings
+
+  -- Any two distinct AnyMapping objects must cover different access rights
+  all spec: MemChannelSpec, disj left, right: spec.anyMappings |
+    left.access != right.access
 }
 
-fact ExplicitActiveSharing {
-  -- Every peer on an active memory channel must be admitted by every other
-  -- policy that names a participant.
-  -- marios: I don't fully understand that. I need to revisit
-  all ch: MemChannel |
-    active[ch] implies all policy: Policy, observer, participant: ch.mapped |
-      observer in policy.peers implies permits[policy, ch, participant]
+fact AnyMappingCountShape {
+  -- -1 means unlimited; every other valid count is positive.
+  all mapping: AnyMapping |
+    mapping.count = -1 or mapping.count > 0
+}
+
+fact AnyMappingsCoverUnnamedPeers {
+  all policy: Policy, spec: policy.memChannels {
+    -- Named runtime participants must be described explicitly. The remaining
+    -- runtime participants consume ANY entries.
+    specMapped[spec] = channelMapped[spec.channel] & policy.peers
+
+    all peer: channelMapped[spec.channel] - policy.peers {
+      some accessRights[spec.channel, peer]
+      accessRights[spec.channel, peer] in spec.anyMappings.access
+    }
+  }
+}
+
+fact AnyMappingCounts {
+  all policy: Policy,
+      spec: policy.memChannels,
+      mapping: spec.anyMappings |
+    mapping.count = -1 or
+      #anyUsers[policy, spec, mapping.access] <= mapping.count
 }
 
 fact GatewayMatchesUnprotectedMemory {
   -- A peer is a gateway exactly when it maps unprotected memory.
   all p: Peer |
     p in Gateway iff some ch: MemChannel |
-      ch.memType = Unprotected and p in ch.mapped
-}
-
-assert ActiveMemorySharingIsMutuallyAuthorized {
-  all ch: MemChannel |
-    active[ch] implies all policy: Policy, observer, participant: ch.mapped |
-      observer in policy.peers implies permits[policy, ch, participant]
+      ch.memType = Unprotected and p in channelMapped[ch]
 }
 
 assert HostReachabilityRequiresGatewayOnPath {
@@ -145,14 +208,14 @@ pred protectedPipelineExample {
 
   some disj a, b, c: Peer, ab, bc: MemChannel {
     ab.memType = Protected
-    ab.mapped = a + b
-    ab.canWrite = a
-    ab.canRead = b
+    channelMapped[ab] = a + b
+    channelCanWrite[ab] = a
+    channelCanRead[ab] = b
 
     bc.memType = Protected
-    bc.mapped = b + c
-    bc.canWrite = b
-    bc.canRead = c
+    channelMapped[bc] = b + c
+    channelCanWrite[bc] = b
+    channelCanRead[bc] = c
 
     no Gateway
     Host not in a.^memoryFlow
@@ -164,46 +227,29 @@ pred gatewayMemoryExample {
 
   some disj source, gatewayPeer: Peer, internal, egress: MemChannel {
     internal.memType = Protected
-    internal.mapped = source + gatewayPeer
-    internal.canWrite = source
-    internal.canRead = gatewayPeer
+    channelMapped[internal] = source + gatewayPeer
+    channelCanWrite[internal] = source
+    channelCanRead[internal] = gatewayPeer
 
     egress.memType = Unprotected
-    egress.mapped = gatewayPeer
-    egress.canWrite = gatewayPeer
+    channelMapped[egress] = gatewayPeer
+    channelCanWrite[egress] = gatewayPeer
 
     Host in source.^memoryFlow
-  }
-}
-
-pred unauthorizedActiveMemoryRejected {
-  #Peer = 2
-
-  some disj a, b: Peer, ch: MemChannel {
-    ch.memType = Protected
-    ch.mapped = a + b
-    ch.canWrite = a
-    ch.canRead = b
-
-    some policy: Policy |
-      a in policy.peers and
-      no spec: policy.memChannels | spec.channel = ch
   }
 }
 
 pred hiddenGatewayMemoryRejected {
   some p: Peer, ch: MemChannel {
     ch.memType = Unprotected
-    ch.mapped = p
+    channelMapped[ch] = p
 
     p not in Gateway
   }
 }
 
-check ActiveMemorySharingIsMutuallyAuthorized for 5
 check HostReachabilityRequiresGatewayOnPath for 5
 
 run protectedPipelineExample for 5
 run gatewayMemoryExample for 5
-run unauthorizedActiveMemoryRejected for 5
 run hiddenGatewayMemoryRejected for 5
