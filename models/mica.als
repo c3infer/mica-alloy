@@ -58,10 +58,14 @@ sig Policy {
   -- Peers named by this policy.
   peers: set Peer,
 
+  -- Named peers whose complete channel access must be described here.
+  strictPeers: set Peer,
+
   -- Policy-local descriptions of memory channels.
   memChannels: set MemChannelSpec,
 
   -- Control-flow transition channels described by this policy.
+  -- FIXME: We need some facts about those as well!
   transitions: set TransitionChannel
 }
 
@@ -143,9 +147,18 @@ fun peerFlow: Peer -> Peer {
 
 fact PolicyShape {
   all p: Policy {
+    -- Strictness is a property assigned to a peer named by this policy.
+    p.strictPeers in p.peers
+
     -- Memory channel specifications can only map peers named by the policy.
     all spec: p.memChannels | specMapped[spec] in p.peers
   }
+}
+
+fact StrictPeersHaveNoUnlistedChannels {
+  all policy: Policy, peer: policy.strictPeers, ch: MemChannel |
+    peer in channelMapped[ch] implies
+      some spec: policy.memChannels | spec.channel = ch
 }
 
 fact MemorySpecificationShape {

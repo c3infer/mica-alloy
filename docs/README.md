@@ -51,6 +51,8 @@ number of unnamed peers using that access right; `-1` means unlimited.
 One policy in the combined policy set. It records:
 
 - `peers`: peers named by the policy;
+- `strictPeers`: named peers whose complete channel access must be described by
+  the policy;
 - `memChannels`: policy-local memory-channel specifications;
 - `transitions`: transition channels described by the policy.
 
@@ -59,6 +61,13 @@ One policy in the combined policy set. It records:
 `PolicyShape`
 
 Memory-channel specifications can only map peers named by their policy.
+Peers marked strict must also be named by that policy.
+
+`StrictPeersHaveNoUnlistedChannels`
+
+Every memory channel accessible to a peer marked strict by a policy must have a
+memory-channel specification in that policy. Strictness is policy-relative: a
+peer can be strict in one policy without being strict in another.
 
 `MemorySpecificationShape`
 
