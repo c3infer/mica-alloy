@@ -63,6 +63,13 @@ One policy in the combined policy set. It records:
 Memory-channel specifications can only map peers named by their policy.
 Peers marked strict must also be named by that policy.
 
+`NoOrphans`
+
+Every peer must be named by a policy, every memory channel must be referenced
+by a policy-owned memory-channel specification, and every transition channel
+must be listed by a policy. Every memory-channel specification and `ANY`
+mapping must likewise be contained by a policy.
+
 `StrictPeersHaveNoUnlistedChannels`
 
 Every memory channel accessible to a peer marked strict by a policy must have a
@@ -73,7 +80,8 @@ peer can be strict in one policy without being strict in another.
 
 Each memory-channel specification belongs to exactly one policy, and each
 `ANY` entry belongs to exactly one specification. A specification has at most
-one `ANY` entry for each access right.
+one `ANY` entry for each access right. A policy has at most one specification
+for each memory channel.
 
 `AnyMappingCountShape`
 

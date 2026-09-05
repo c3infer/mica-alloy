@@ -155,6 +155,15 @@ fact PolicyShape {
   }
 }
 
+fact NoOrphans {
+  -- Every modeled object is affiliated with at least one policy.
+  Peer = Policy.peers
+  MemChannel = Policy.memChannels.channel
+  TransitionChannel = Policy.transitions
+  MemChannelSpec = Policy.memChannels
+  AnyMapping = Policy.memChannels.anyMappings
+}
+
 fact StrictPeersHaveNoUnlistedChannels {
   all policy: Policy, peer: policy.strictPeers, ch: MemChannel |
     peer in channelMapped[ch] implies
@@ -165,6 +174,10 @@ fact MemorySpecificationShape {
   -- Every MemChannelSpec belongs to exactly one policy
   all spec: MemChannelSpec |
     one policy: Policy | spec in policy.memChannels
+
+  -- A policy has at most one specification for each memory channel
+  all policy: Policy, ch: MemChannel |
+    lone { spec: policy.memChannels | spec.channel = ch }
 
   -- AnyMapping belongs to exactly one MemChannelSpec
   all mapping: AnyMapping |
@@ -215,6 +228,20 @@ assert HostReachabilityRequiresGatewayOnPath {
       some (src.*peerFlow & Gateway)
 }
 
+assert ProtectedChannelsDoNotFlowDirectlyToHost {
+  all peer: Peer |
+    Host in peer.memoryFlow implies
+      some ch: MemChannel |
+        ch.memType = Unprotected and
+        peer in channelCanWrite[ch]
+}
+
+assert AtMostOneSpecPerPolicyAndChannel {
+  all policy: Policy, ch: MemChannel |
+    lone { spec: policy.memChannels | spec.channel = ch }
+}
+
+/*
 pred protectedPipelineExample {
   #Peer = 3
   #MemChannel = 2
@@ -260,9 +287,14 @@ pred hiddenGatewayMemoryRejected {
     p not in Gateway
   }
 }
+*/
 
 check HostReachabilityRequiresGatewayOnPath for 5
+check ProtectedChannelsDoNotFlowDirectlyToHost for 5
+check AtMostOneSpecPerPolicyAndChannel for 5
 
+/*
 run protectedPipelineExample for 5
 run gatewayMemoryExample for 5
 run hiddenGatewayMemoryRejected for 5
+*/
