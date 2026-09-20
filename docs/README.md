@@ -1,10 +1,10 @@
-# Memory-Only Mica Alloy Model
+# Mica Alloy Model
 
-This documents the current simplified model in `models/mica.als`.
+This documents the current simplified Mica Alloy model.
 
 For now, validation and information-flow semantics cover memory channels. The
-model includes transition-channel signatures, but facts for those channels are
-still deferred.
+model includes transition-channel signatures, but validation predicates for
+those channels are still deferred.
 
 ## Current Alloy Vocabulary
 
@@ -57,52 +57,90 @@ One policy in the combined policy set. It records:
 - `memChannels`: policy-local memory-channel specifications;
 - `transitions`: transition channels described by the policy.
 
-## Current Validation Rules
+## Current Constraint Predicates
 
-`PolicyShape`
+`policyShape`
 
 Memory-channel specifications can only map peers named by their policy.
 Peers marked strict must also be named by that policy.
 
-`NoOrphans`
+`noOrphans`
 
 Every peer must be named by a policy, every memory channel must be referenced
 by a policy-owned memory-channel specification, and every transition channel
 must be listed by a policy. Every memory-channel specification and `ANY`
 mapping must likewise be contained by a policy.
 
-`StrictPeersHaveNoUnlistedChannels`
+`strictPeersHaveNoUnlistedChannels`
 
 Every memory channel accessible to a peer marked strict by a policy must have a
 memory-channel specification in that policy. Strictness is policy-relative: a
 peer can be strict in one policy without being strict in another.
 
-`MemorySpecificationShape`
+`memorySpecificationShape`
 
 Each memory-channel specification belongs to exactly one policy, and each
 `ANY` entry belongs to exactly one specification. A specification has at most
 one `ANY` entry for each access right. A policy has at most one specification
 for each memory channel.
 
-`AnyMappingCountShape`
+`anyMappingCountShape`
 
 An `ANY` count is either `-1`, meaning unlimited, or a positive integer.
 
-`AnyMappingsCoverUnnamedPeers`
+`anyMappingsCoverUnnamedPeers`
 
 Runtime participants named by the policy must be mapped explicitly. Every
 unnamed runtime participant must have at least one access right, and each of
 its rights must be covered by an `ANY` entry in the specification.
 
-`AnyMappingCounts`
+`anyMappingCounts`
 
 For a bounded `ANY` entry, the number of unnamed runtime participants using
 its access right cannot exceed its positive count. A peer with multiple rights
 is counted once against each corresponding entry.
 
-`GatewayMatchesUnprotectedMemory`
+`gatewayMatchesUnprotectedMemory`
 
 A peer is in `Gateway` exactly when it maps unprotected memory.
+
+`valid`
+
+Composes all the predicates above into the current definition of a valid Mica
+configuration. The predicate remains optional until a module invokes it.
+
+## Project Structure
+
+`models/mica/core.als`
+
+Declares signatures and fields. It deliberately contains no facts, so focused
+tests can start from the unconstrained vocabulary.
+
+`models/mica/relations.als`
+
+Defines derived relations such as `channelMapped`, `accessRights`,
+`memoryFlow`, and `peerFlow`. These helpers calculate values but do not activate
+the model's validation constraints.
+
+`models/mica/constraints.als`
+
+Defines every validation rule as a named predicate. The `valid` predicate
+composes the complete set of current rules. Opening this module does not force
+`valid`, which allows checks to activate individual constraints.
+
+`models/mica/model.als`
+
+Provides the fully constrained model by applying `valid` in the
+`ValidMicaConfiguration` fact.
+
+`checks/`
+
+Contains assertions and `check` commands grouped by concern. These modules open
+the fully constrained model.
+
+`examples/`
+
+Contains satisfiable scenarios and `run` commands.
 
 ## Current Properties
 
@@ -120,7 +158,9 @@ pipeline.
 ## Run
 
 ```sh
-alloy exec -f -t text -o /tmp/mica-alloy-out -c '*' models/mica.als
+alloy exec -f -t text -o /tmp/mica-confidentiality -c '*' checks/confidentiality.als
+alloy exec -f -t text -o /tmp/mica-structure -c '*' checks/structure.als
+alloy exec -f -t text -o /tmp/mica-examples -c '*' examples/pipelines.als
 ```
 
 Expected results:

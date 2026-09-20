@@ -23,13 +23,21 @@ of accessible memory channels to be described.
 
 ## Files
 
-- `models/mica.als`: Alloy signatures, facts, assertions, and examples.
-- `docs/README.md`: explanation of the memory-only model and properties.
+- `models/mica/core.als`: signatures and fields, with no global facts.
+- `models/mica/relations.als`: derived relations and helper predicates.
+- `models/mica/constraints.als`: optional named constraint predicates and the
+  composed `valid` predicate.
+- `models/mica/model.als`: fully constrained model; activates `valid` as a fact.
+- `checks/`: assertions grouped by concern.
+- `examples/`: satisfiable scenarios and their `run` commands.
+- `docs/README.md`: detailed explanation of the model and project layout.
 
 ## Run
 
 ```sh
-alloy exec -f -t text -o /tmp/mica-alloy-out -c '*' models/mica.als
+alloy exec -f -t text -o /tmp/mica-confidentiality -c '*' checks/confidentiality.als
+alloy exec -f -t text -o /tmp/mica-structure -c '*' checks/structure.als
+alloy exec -f -t text -o /tmp/mica-examples -c '*' examples/pipelines.als
 ```
 
 Expected results:
@@ -45,3 +53,8 @@ run   gatewayMemoryExample                         SAT
 `UNSAT` is the expected result for an Alloy `check`: it means no counterexample
 was found within the selected scope. `SAT` for a `run` command means Alloy found
 an instance of the requested example.
+
+To test an individual constraint without activating the complete model, open
+`core`, `relations`, and `constraints`, then use the relevant predicate in the
+assertion or scenario. Open `model` when every constraint in `valid` should be
+enforced.
