@@ -4,6 +4,12 @@ open models/mica/core
 open models/mica/relations
 open models/mica/model
 
+-- A three-peer pipeline connected only through protected memory:
+--
+--   a --write/read--> b --write/read--> c
+--
+-- The two protected channels permit information to flow from a to c without
+-- making any peer a gateway or creating a path from a to the untrusted host.
 pred protectedPipelineExample {
   #Peer = 3
   #MemChannel = 2
@@ -25,6 +31,12 @@ pred protectedPipelineExample {
   }
 }
 
+-- A two-peer pipeline in which a dedicated gateway mediates host egress:
+--
+--   source --protected--> gatewayPeer --unprotected--> Host
+--
+-- The source writes to a protected internal channel, the gateway reads it,
+-- and then the gateway writes to an unprotected channel visible to the host.
 pred gatewayMemoryExample {
   #Peer = 2
 
