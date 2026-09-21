@@ -1,0 +1,25 @@
+{
+  "Peers": {
+    "Self": "P2",
+    "P1": { "hash": "0xabcd", "is_gateway": false, "strict": true },
+    "P2": { "hash": "0xefab", "is_gateway": true, "strict": true }
+  },
+  "MemChannels": {
+    "Internal": {
+      "size": 4096,
+      "type": "PROTECTED",
+      "mappings": {
+        "P1": { "gpa": "0x1000", "prot": "W" },
+        "P2": { "gpa": "0x1000", "prot": "R" }
+      }
+    },
+    "Egress": {
+      "size": 4096,
+      "type": "UNPROTECTED",
+      "mappings": {
+        "P2": { "gpa": "0x2000", "prot": "W" }
+      }
+    }
+  },
+  "TransChannels": {}
+}

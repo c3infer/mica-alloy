@@ -30,6 +30,8 @@ of accessible memory channels to be described.
 - `models/mica/model.als`: fully constrained model; activates `valid` as a fact.
 - `checks/`: assertions grouped by concern.
 - `examples/`: satisfiable scenarios and their `run` commands.
+- `tools/mica-json-to-alloy/`: compiles Mica JSON policies into concrete Alloy
+  configuration predicates.
 - `docs/README.md`: detailed explanation of the model and project layout.
 
 ## Run
@@ -58,3 +60,21 @@ To test an individual constraint without activating the complete model, open
 `core`, `relations`, and `constraints`, then use the relevant predicate in the
 assertion or scenario. Open `model` when every constraint in `valid` should be
 enforced.
+
+## Compile JSON configurations
+
+The JSON compiler turns concrete Mica policy files into an Alloy configuration
+predicate and validity check:
+
+```sh
+python3 tools/mica-json-to-alloy/mica_json_to_alloy.py \
+  tools/mica-json-to-alloy/examples/policy-p1.json \
+  tools/mica-json-to-alloy/examples/policy-p2.json \
+  -o generated/example.als \
+  --module generated/example
+
+alloy exec -f -t text -o /tmp/mica-generated -c '*' generated/example.als
+```
+
+See `tools/mica-json-to-alloy/README.md` for name-resolution rules, manifest
+aliases, supported fields, and result interpretation.

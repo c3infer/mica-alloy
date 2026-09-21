@@ -1,0 +1,18 @@
+{
+  "Peers": {
+    "Self": "P1",
+    "P1": { "hash": "0xabcd", "is_gateway": false, "strict": true },
+    "P2": { "hash": "0xefab", "is_gateway": true, "strict": false }
+  },
+  "MemChannels": {
+    "Internal": {
+      "size": 4096,
+      "type": "PROTECTED",
+      "mappings": {
+        "P1": { "gpa": "0x1000", "prot": "W" },
+        "P2": { "gpa": "0x1000", "prot": "R" }
+      }
+    }
+  },
+  "TransChannels": {}
+}
